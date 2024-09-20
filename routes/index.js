@@ -2,53 +2,79 @@ var express = require('express');
 var router = express.Router();
 const userModel = require("./users");
 const postModel = require("./post");
+const passport = require('passport');
+const upload = require("./multer")
 
+const localStratergy = require("passport-local");
+passport.use(new localStratergy(userModel.authenticate()));
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
-router.get('/createuser', async function(req, res, next) {
- let createdUser =  await userModel.create({
-    username:"saqib",
-    password: "saqib1234",
-    email: "saqib123@gmail.com",
-    fullName: "saqib khan"})
-    res.send(createdUser);
-  })
-  
-router.get('/createpost', async function(req, res, next) {
- let createdPost =  await postModel.create({
-  postText: "hello everyone",
-  user: "66d99eb230e2934812103070",  // in post there is id of user
-})
-let user = await userModel.findOne({
-  _id:"66d99eb230e2934812103070"
-})
-user.posts.push(createdPost._id);
-await user.save();
-res.send("done")
-})
-
-router.get('/allusers', async function(req, res, next) {
-  let user = await userModel.findOne({
-    _id:"66d99eb230e2934812103070"
-  }).populate('posts')
-  res.send(user)
+router.get('/login', function(req, res, next) {
+  res.render('login',{error: req.flash('error')});
 });
-  
+router.get('/feed', function(req, res, next) {
+  res.render('feed');
+});
+router.post('/upload', isLoggedIn ,upload.single("file") ,async function(req, res, next) {
+ if(!req.file){
+    return res.status(404).send("No files were given")
+ }  
+ const user = await userModel.findOne({
+  username:req.session.passport.user
+ })
+ const post = await postModel.create({
+  image: req.file.filename,
+  imageText: req.body.filecaption,
+  user: user._id
+ })
+ user.posts.push(post._id);
+ await user.save();
+ res.send("done")
+});
+router.get('/profile', isLoggedIn ,async function(req, res, next) {
+  const user = await userModel.findOne({
+    username:req.session.passport.user
+  })
+  .populate("posts")
+  res.render("profile",{user})
+});
+router.post("/register",function(req,res){
+  const userData = new userModel({
+    username: req.body.username,
+    
+    email: req.body.email,
+    fullName: req.body.fullName
+   
 
+})
+userModel.register(userData,req.body.password).then(function(){
+  passport.authenticate("local")(req,res,function(){
+    res.redirect("/profile")
+  })
+})
+})
+router.post("/login",passport.authenticate("local",{
+  successRedirect: "/profile",
+  failureRedirect: "/login",
+  failureFlash: true 
+}), function(req,res){
+   
+})
+
+router.get("/logout",function(req,res){
+  
+  req.logout(function(err) {
+    if (err) { return next(err); }
+    res.redirect('/');
+  });
+})
+
+function isLoggedIn(req,res,next) {
+  if(req.isAuthenticated()) return next();
+  res.redirect("/login");
+}
 module.exports = router;
 
 
-
-
-
-
-
-
-
-
-
-//DATA ASSOCIATION:
-
-// EK MODEL SE DUSRE MODEL KE DATA KO JOD DENA ID KE THROUGH USSE HI DATA ASSOCIATION BLTE H....MEANS SUPPOSE THERE ARE TWO THINGS USER AND USER'S POST HOW IT WILL BE KNOWN WHETHER THIS POST IS BELONG TO THAT SPECIFIC USER ONLY AND VICE-VERSA IT WILL BE KNOWN WHEN USER HAVE THE PARTICULAR ID OF THAT POST AND VICE-VERSA FROM THIS BOTH USER AND POST WIL BE CONNECTED

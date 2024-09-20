@@ -1,16 +1,15 @@
 const mongoose = require('mongoose');
 const plm = require("passport-local-mongoose");
-mongoose.connect("mongodb://127.0.0.1:27017/dataAssociationStorage")
+mongoose.connect("mongodb://127.0.0.1:27017/Pinterest")
 // Create a schema for user details
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true, //means that this field must always have a value (it can't be empty).
-    unique: true // no two users can have same username in DB
+    //required: true, //means that this field must always have a value (it can't be empty).
+    //unique: true // no two users can have same username in DB
   },
   password: {
     type: String,
-    required: true
   },
   email: {
     type: String,
